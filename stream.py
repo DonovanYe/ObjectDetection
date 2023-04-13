@@ -9,6 +9,7 @@ import argparse
 import imutils
 import time
 import cv2
+import time
 
 # construct the argument parse and parse the arguments
 ap = argparse.ArgumentParser()
@@ -41,8 +42,20 @@ CLASSES = ["aeroplane", "background", "bicycle", "bird", "boat",
            "dog", "horse", "motorbike", "person", "pottedplant", "sheep",
            "sofa", "train", "tvmonitor"]
 
+CORRECT_ELEMENT = "cat"
+CORRECT_INDEX = CLASSES.index(CORRECT_ELEMENT)
+
 # Assigning random colors to each of the classes
-COLORS = np.random.uniform(0, 255, size=(len(CLASSES), 3))
+# COLORS = np.random.uniform(0, 255, size=(len(CLASSES), 3))
+
+# Assign color green to "correct" element, color red to everything else
+# Note: The color order is weird and is BGR instead of RGB
+red_bgr = [0.000000000, 0.000000000, 255.000000000]
+green_bgr = [0.000000000, 128.000000000, 0.000000000]
+COLORS = [red_bgr] * (len(CLASSES) - 1)
+COLORS.insert(CORRECT_INDEX, green_bgr)
+COLORS = np.asarray(COLORS)
+
 
 # COLORS: a list of 21 R,G,B values, like ['101.097383   172.34857188 111.84805346'] for each label
 # length of COLORS = length of CLASSES = 21
@@ -90,6 +103,7 @@ fps = FPS().start()
 
 # Consider the video stream as a series of frames. We capture each frame based on a certain FPS, and loop over each frame
 # loop over the frames from the video stream
+found_element = False
 while True:
 	# grab the frame from the threaded video stream and resize it to have a maximum width of 400 pixels
 	# vs is the VideoStream
@@ -148,6 +162,9 @@ while True:
 			# Choose the font of your choice: FONT_HERSHEY_SIMPLEX, FONT_HERSHEY_PLAIN, FONT_HERSHEY_DUPLEX, FONT_HERSHEY_COMPLEX, FONT_HERSHEY_SCRIPT_COMPLEX, FONT_ITALIC, etc.
 			cv2.putText(frame, label, (startX, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, COLORS[idx], 2)
 
+			if idx == CORRECT_INDEX:
+				found_element = True
+
 	# show the output frame
 	cv2.imshow("Frame", frame)
 
@@ -184,6 +201,13 @@ while True:
 
 	# update the FPS counter
 	fps.update()
+
+	# Exit if element found
+	if found_element == True:
+		print("YAY! you found the " + CORRECT_ELEMENT)
+		print("Your next clue is <Insert clue here>")
+		time.sleep(10)
+		break
 
 # stop the timer
 fps.stop()
