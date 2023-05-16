@@ -42,8 +42,8 @@ CLASSES = ["aeroplane", "background", "bicycle", "bird", "boat",
            "dog", "horse", "motorbike", "person", "pottedplant", "sheep",
            "sofa", "train", "tvmonitor"]
 
-CORRECT_ELEMENT = "cat"
-CORRECT_INDEX = CLASSES.index(CORRECT_ELEMENT)
+CORRECT_ELEMENTS = ["cat", "dog"]
+CORRECT_INDICES = [CLASSES.index(i) for i in CORRECT_ELEMENTS]
 
 # Assigning random colors to each of the classes
 # COLORS = np.random.uniform(0, 255, size=(len(CLASSES), 3))
@@ -53,7 +53,8 @@ CORRECT_INDEX = CLASSES.index(CORRECT_ELEMENT)
 red_bgr = [0.000000000, 0.000000000, 255.000000000]
 green_bgr = [0.000000000, 128.000000000, 0.000000000]
 COLORS = [red_bgr] * (len(CLASSES) - 1)
-COLORS.insert(CORRECT_INDEX, green_bgr)
+for i in CORRECT_INDICES:
+	COLORS.insert(i, green_bgr)
 COLORS = np.asarray(COLORS)
 
 
@@ -103,7 +104,7 @@ fps = FPS().start()
 
 # Consider the video stream as a series of frames. We capture each frame based on a certain FPS, and loop over each frame
 # loop over the frames from the video stream
-found_element = False
+found_elements = False
 while True:
 	# grab the frame from the threaded video stream and resize it to have a maximum width of 400 pixels
 	# vs is the VideoStream
@@ -133,6 +134,7 @@ while True:
 	# Predictions:
 	predictions = net.forward()
 
+	correct_idx_set = set(CORRECT_INDICES)
 	# loop over the predictions
 	for i in np.arange(0, predictions.shape[2]):
 		# extract the confidence (i.e., probability) associated with the prediction
@@ -162,8 +164,11 @@ while True:
 			# Choose the font of your choice: FONT_HERSHEY_SIMPLEX, FONT_HERSHEY_PLAIN, FONT_HERSHEY_DUPLEX, FONT_HERSHEY_COMPLEX, FONT_HERSHEY_SCRIPT_COMPLEX, FONT_ITALIC, etc.
 			cv2.putText(frame, label, (startX, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, COLORS[idx], 2)
 
-			if idx == CORRECT_INDEX:
-				found_element = True
+			if idx in correct_idx_set:
+				correct_idx_set.remove(idx)
+
+			if len(correct_idx_set) == 0:
+				found_elements = True
 
 	# show the output frame
 	cv2.imshow("Frame", frame)
@@ -203,8 +208,8 @@ while True:
 	fps.update()
 
 	# Exit if element found
-	if found_element == True:
-		print("YAY! you found the " + CORRECT_ELEMENT)
+	if found_elements == True:
+		print("YAY! you found the elements")
 		print("Your next clue is <Insert clue here>")
 		time.sleep(10)
 		break
