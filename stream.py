@@ -140,6 +140,10 @@ while True:
 	predictions = net.forward()
 
 	correct_idx_set = set(CORRECT_INDICES)
+
+	frame = imutils.resize(frame, width=screen_w*2, height=screen_h*2)
+	(h, w) = frame.shape[:2]
+
 	# loop over the predictions
 	for i in np.arange(0, predictions.shape[2]):
 		# extract the confidence (i.e., probability) associated with the prediction
@@ -159,15 +163,15 @@ while True:
 			(startX, startY, endX, endY) = box.astype("int")
 
 			# Get the label with the confidence score
-			label = "{}: {:.2f}%".format(CLASSES[idx], confidence * 100)
+			label = "{}: {:.0f}%".format(CLASSES[idx], confidence * 100)
 			print("Object detected: ", label)
 			# Draw a rectangle across the boundary of the object
 			cv2.rectangle(frame, (startX, startY), (endX, endY),
-				COLORS[idx], 2)
+				COLORS[idx], 10)
 			y = startY - 15 if startY - 15 > 15 else startY + 15
 			# Put a text outside the rectangular detection
 			# Choose the font of your choice: FONT_HERSHEY_SIMPLEX, FONT_HERSHEY_PLAIN, FONT_HERSHEY_DUPLEX, FONT_HERSHEY_COMPLEX, FONT_HERSHEY_SCRIPT_COMPLEX, FONT_ITALIC, etc.
-			cv2.putText(frame, label, (startX, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, COLORS[idx], 2)
+			cv2.putText(frame, label, (startX, y), cv2.FONT_HERSHEY_SIMPLEX, 2, COLORS[idx], 10)
 
 			if idx in correct_idx_set:
 				correct_idx_set.remove(idx)
