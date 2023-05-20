@@ -10,6 +10,7 @@ import imutils
 import time
 import cv2
 import time
+import screeninfo
 
 # construct the argument parse and parse the arguments
 ap = argparse.ArgumentParser()
@@ -104,13 +105,17 @@ fps = FPS().start()
 
 # Consider the video stream as a series of frames. We capture each frame based on a certain FPS, and loop over each frame
 # loop over the frames from the video stream
+
+screen = screeninfo.get_monitors()[0]
+screen_w, screen_h = screen.width, screen.height
+
 found_elements = False
 while True:
 	# grab the frame from the threaded video stream and resize it to have a maximum width of 400 pixels
 	# vs is the VideoStream
 	frame = vs.read()
 	frame = imutils.resize(frame, width=400)
-	print(frame.shape) # (225, 400, 3)
+	# print(frame.shape) # (225, 400, 3)
 	# grab the frame dimensions and convert it to a blob
 	# First 2 values are the h and w of the frame. Here h = 225 and w = 400
 	(h, w) = frame.shape[:2]
@@ -170,15 +175,20 @@ while True:
 			if len(correct_idx_set) == 0:
 				found_elements = True
 
-	# show the output frame
-	cv2.imshow("Frame", frame)
+	# show the output frame'
+	frame = imutils.resize(frame, width=screen_w*2, height=screen_h*2)
 
+	name = 'Security Camera'
+	cv2.namedWindow(name)
+	# cv2.moveWindow(name, screen.x, screen.y)
+	cv2.imshow(name, frame)
+	
 	# HOW TO STOP THE VIDEOSTREAM?
 	# Using cv2.waitKey(1) & 0xFF
 
 	# The waitKey(0) function returns -1 when no input is made
 	# As soon an event occurs i.e. when a button is pressed, it returns a 32-bit integer
-	# 0xFF represents 11111111, an 8 bit binary
+
 	# since we only require 8 bits to represent a character we AND waitKey(0) to 0xFF, an integer below 255 is always obtained
 	# ord(char) returns the ASCII value of the character which would be again maximum 255
 	# by comparing the integer to the ord(char) value, we can check for a key pressed event and break the loop
@@ -186,14 +196,6 @@ while True:
 	# Case 1: When no button is pressed: cv2.waitKey(1) is -1; 0xFF = 255; So -1 & 255 gives 255
 	# Case 2: When 'q' is pressed: ord("q") is 113; 0xFF = 255; So 113 & 255 gives 113
 
-	# Explaining bitwise AND Operator ('&'):
-	# The & operator yields the bitwise AND of its arguments
-	# First you convert the numbers to binary and then do a bitwise AND operation
-	# For example, (113 & 255):
-	# Binary of 113: 01110001
-	# Binary of 255: 11111111
-	# 113 & 255 = 01110001 (From the left, 1&1 gives 1, 0&1 gives 0, 0&1 gives 0,... etc.)
-	# 01110001 is the decimal for 113, which will be the output
 	# So we will basically get the ord() of the key we press if we do a bitwise AND with 255.
 	# ord() returns the unicode code point of the character. For e.g., ord('a') = 97; ord('q') = 113
 
