@@ -110,6 +110,9 @@ screen = screeninfo.get_monitors()[0]
 screen_w, screen_h = screen.width, screen.height
 
 found_elements = False
+
+box_locations = {}
+
 while True:
 	# grab the frame from the threaded video stream and resize it to have a maximum width of 400 pixels
 	# vs is the VideoStream
