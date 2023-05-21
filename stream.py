@@ -11,6 +11,8 @@ import time
 import cv2
 import time
 import screeninfo
+import sys
+import collections
 
 # construct the argument parse and parse the arguments
 ap = argparse.ArgumentParser()
@@ -111,7 +113,8 @@ screen_w, screen_h = screen.width, screen.height
 
 found_elements = False
 
-box_locations = {}
+prev_box_locations = collections.defaultdict(list)
+new_box_locations = collections.defaultdict(list)
 
 while True:
 	# grab the frame from the threaded video stream and resize it to have a maximum width of 400 pixels
@@ -159,14 +162,41 @@ while True:
 			# idx is the index of the class label
 			# E.g. for person, idx = 15, for chair, idx = 9, etc.
 			idx = int(predictions[0, 0, i, 1])
+			category = CLASSES[idx]
+
 			# then compute the (x, y)-coordinates of the bounding box for the object
 			box = predictions[0, 0, i, 3:7] * np.array([w, h, w, h])
 			# Example, box = [130.9669733   76.75442174 393.03834438 224.03566539]
 			# Convert them to integers: 130 76 393 224
 			(startX, startY, endX, endY) = box.astype("int")
 
+			if category in prev_box_locations:
+				closest = [sys.maxsize] * 4
+				closest_eucl = (float('inf'), float('inf'))
+				found = False
+				for coord in prev_box_locations[category]:
+					start_prev = np.array([coord[:2]])
+					end_prev = np.array(coord[2:])
+					start_curr = np.array([startX, startY])
+					end_curr = np.array([endX, endY])
+
+					eucl_start = np.linalg.norm(start_prev - start_curr)
+					eucl_end = np.linalg.norm(end_prev - end_curr)
+					if eucl_start < 150 and eucl_end < 150 and eucl_start < closest_eucl[0] and eucl_end < closest_eucl[1]:
+						closest = coord
+						closest_eucl = (eucl_start, eucl_end)
+						found = True
+
+				if found:
+					(startX, startY, endX, endY) = closest
+					new_box_locations[category].append(closest)
+				else:
+					new_box_locations[category].append((startX, startY, endX, endY))
+			else:
+				new_box_locations[category].append((startX, startY, endX, endY))
+
 			# Get the label with the confidence score
-			label = "{}: {:.0f}%".format(CLASSES[idx], confidence * 100)
+			label = "{}: {:.0f}%".format(category, confidence * 100)
 			print("Object detected: ", label)
 			# Draw a rectangle across the boundary of the object
 			cv2.rectangle(frame, (startX, startY), (endX, endY),
@@ -181,6 +211,9 @@ while True:
 
 			if len(correct_idx_set) == 0:
 				found_elements = True
+
+	prev_box_locations = new_box_locations
+	new_box_locations = collections.defaultdict(list)
 
 	# show the output frame'
 	frame = imutils.resize(frame, width=screen_w*2, height=screen_h*2)
