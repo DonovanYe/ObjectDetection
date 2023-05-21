@@ -13,6 +13,7 @@ import time
 import screeninfo
 import sys
 import collections
+from datetime import datetime
 
 # construct the argument parse and parse the arguments
 ap = argparse.ArgumentParser()
@@ -116,6 +117,8 @@ found_elements = False
 
 prev_box_locations = collections.defaultdict(list)
 new_box_locations = collections.defaultdict(list)
+
+red_dot_counter = 0
 
 while True:
 	# grab the frame from the threaded video stream and resize it to have a maximum width of 400 pixels
@@ -235,6 +238,21 @@ while True:
 	# Bottom right
 	cv2.rectangle(frame, (w - margin - thickness, h - margin - length), (w - margin, h - margin), gray_bgr, -1)
 	cv2.rectangle(frame, (w - margin - length, h - margin - thickness), (w - margin, h - margin), gray_bgr, -1)
+
+	cv2.putText(frame, "CAM 03", (margin + thickness + 20, h - margin - thickness - 20), cv2.FONT_HERSHEY_DUPLEX, 3, [0,0,0], 7)
+	cv2.putText(frame, "REC", (w//2 - 100, margin + thickness + 50), cv2.FONT_HERSHEY_DUPLEX, 4, [0,0,0], 6)
+
+	if red_dot_counter < 10:
+		cv2.circle(frame, (w//2 + 200, margin +thickness + 10), 25, red_bgr, -1)
+	elif red_dot_counter == 20:
+		red_dot_counter = 0
+	red_dot_counter += 1
+
+	cv2.rectangle(frame, (w//2  - 225, h - margin - thickness - 140), (w // 2 + 265, h - margin - 50), gray_bgr, -1)
+
+	now = datetime.now()
+	current_time = now.strftime("%H:%M:%S")
+	cv2.putText(frame, current_time, (w//2 - 225, h - margin - thickness - 25), cv2.FONT_HERSHEY_PLAIN, 7, [0,0,0], 9)
 
 	# show the output frame'
 	frame = imutils.resize(frame, width=screen_w*2, height=screen_h*2)
