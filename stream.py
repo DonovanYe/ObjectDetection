@@ -258,6 +258,9 @@ while True:
 	frame = imutils.resize(frame, width=screen_w*2, height=screen_h*2)
 
 	name = 'Security Camera'
+
+	print(type(frame))
+
 	cv2.namedWindow(name)
 	# cv2.moveWindow(name, screen.x, screen.y)
 	cv2.imshow(name, frame)
