@@ -55,6 +55,7 @@ CORRECT_INDICES = [CLASSES.index(i) for i in CORRECT_ELEMENTS]
 # Note: The color order is weird and is BGR instead of RGB
 red_bgr = [0.000000000, 0.000000000, 255.000000000]
 green_bgr = [0.000000000, 128.000000000, 0.000000000]
+white_bgr = [255., 255., 255.]
 COLORS = [red_bgr] * (len(CLASSES) - 1)
 for i in CORRECT_INDICES:
 	COLORS.insert(i, green_bgr)
@@ -214,6 +215,8 @@ while True:
 
 	prev_box_locations = new_box_locations
 	new_box_locations = collections.defaultdict(list)
+
+	cv2.rectangle(frame, (15, 15), (15, 75), white_bgr, 50)
 
 	# show the output frame'
 	frame = imutils.resize(frame, width=screen_w*2, height=screen_h*2)
