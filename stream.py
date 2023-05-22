@@ -10,6 +10,10 @@ import imutils
 import time
 import cv2
 import time
+import screeninfo
+import sys
+import collections
+from datetime import datetime
 
 # construct the argument parse and parse the arguments
 ap = argparse.ArgumentParser()
@@ -52,6 +56,7 @@ CORRECT_INDICES = [CLASSES.index(i) for i in CORRECT_ELEMENTS]
 # Note: The color order is weird and is BGR instead of RGB
 red_bgr = [0.000000000, 0.000000000, 255.000000000]
 green_bgr = [0.000000000, 128.000000000, 0.000000000]
+gray_bgr = [211., 211., 211.]
 COLORS = [red_bgr] * (len(CLASSES) - 1)
 for i in CORRECT_INDICES:
 	COLORS.insert(i, green_bgr)
@@ -104,13 +109,23 @@ fps = FPS().start()
 
 # Consider the video stream as a series of frames. We capture each frame based on a certain FPS, and loop over each frame
 # loop over the frames from the video stream
+
+screen = screeninfo.get_monitors()[0]
+screen_w, screen_h = screen.width, screen.height
+
 found_elements = False
+
+prev_box_locations = collections.defaultdict(list)
+new_box_locations = collections.defaultdict(list)
+
+red_dot_counter = 0
+
 while True:
 	# grab the frame from the threaded video stream and resize it to have a maximum width of 400 pixels
 	# vs is the VideoStream
 	frame = vs.read()
 	frame = imutils.resize(frame, width=400)
-	print(frame.shape) # (225, 400, 3)
+	# print(frame.shape) # (225, 400, 3)
 	# grab the frame dimensions and convert it to a blob
 	# First 2 values are the h and w of the frame. Here h = 225 and w = 400
 	(h, w) = frame.shape[:2]
@@ -135,6 +150,11 @@ while True:
 	predictions = net.forward()
 
 	correct_idx_set = set(CORRECT_INDICES)
+
+	frame = imutils.resize(frame, width=screen_w*2, height=screen_h*2)
+	(h, w) = frame.shape[:2]
+	frame = cv2.applyColorMap(frame, cv2.COLORMAP_BONE)
+
 	# loop over the predictions
 	for i in np.arange(0, predictions.shape[2]):
 		# extract the confidence (i.e., probability) associated with the prediction
@@ -147,22 +167,49 @@ while True:
 			# idx is the index of the class label
 			# E.g. for person, idx = 15, for chair, idx = 9, etc.
 			idx = int(predictions[0, 0, i, 1])
+			category = CLASSES[idx]
+
 			# then compute the (x, y)-coordinates of the bounding box for the object
 			box = predictions[0, 0, i, 3:7] * np.array([w, h, w, h])
 			# Example, box = [130.9669733   76.75442174 393.03834438 224.03566539]
 			# Convert them to integers: 130 76 393 224
 			(startX, startY, endX, endY) = box.astype("int")
 
+			if category in prev_box_locations:
+				closest = [sys.maxsize] * 4
+				closest_eucl = (float('inf'), float('inf'))
+				found = False
+				for coord in prev_box_locations[category]:
+					start_prev = np.array([coord[:2]])
+					end_prev = np.array(coord[2:])
+					start_curr = np.array([startX, startY])
+					end_curr = np.array([endX, endY])
+
+					eucl_start = np.linalg.norm(start_prev - start_curr)
+					eucl_end = np.linalg.norm(end_prev - end_curr)
+					if eucl_start < 150 and eucl_end < 150 and eucl_start < closest_eucl[0] and eucl_end < closest_eucl[1]:
+						closest = coord
+						closest_eucl = (eucl_start, eucl_end)
+						found = True
+
+				if found:
+					(startX, startY, endX, endY) = closest
+					new_box_locations[category].append(closest)
+				else:
+					new_box_locations[category].append((startX, startY, endX, endY))
+			else:
+				new_box_locations[category].append((startX, startY, endX, endY))
+
 			# Get the label with the confidence score
-			label = "{}: {:.2f}%".format(CLASSES[idx], confidence * 100)
+			label = "{}: {:.0f}%".format(category, confidence * 100)
 			print("Object detected: ", label)
 			# Draw a rectangle across the boundary of the object
 			cv2.rectangle(frame, (startX, startY), (endX, endY),
-				COLORS[idx], 2)
+				COLORS[idx], 10)
 			y = startY - 15 if startY - 15 > 15 else startY + 15
 			# Put a text outside the rectangular detection
 			# Choose the font of your choice: FONT_HERSHEY_SIMPLEX, FONT_HERSHEY_PLAIN, FONT_HERSHEY_DUPLEX, FONT_HERSHEY_COMPLEX, FONT_HERSHEY_SCRIPT_COMPLEX, FONT_ITALIC, etc.
-			cv2.putText(frame, label, (startX, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, COLORS[idx], 2)
+			cv2.putText(frame, label, (startX, y), cv2.FONT_HERSHEY_SIMPLEX, 2, COLORS[idx], 10)
 
 			if idx in correct_idx_set:
 				correct_idx_set.remove(idx)
@@ -170,15 +217,58 @@ while True:
 			if len(correct_idx_set) == 0:
 				found_elements = True
 
-	# show the output frame
-	cv2.imshow("Frame", frame)
+	prev_box_locations = new_box_locations
+	new_box_locations = collections.defaultdict(list)
 
+	margin = 50
+	thickness = 35
+	length = 400
+
+	# Top left
+	cv2.rectangle(frame, (margin, margin), (margin + thickness, margin + length), gray_bgr, -1)
+	cv2.rectangle(frame, (margin, margin), (margin + length, margin + thickness), gray_bgr, -1)
+
+	# Top right
+	cv2.rectangle(frame, (w - margin - thickness, margin), (w - margin, margin + length), gray_bgr, -1)
+	cv2.rectangle(frame, (w - margin - length, margin), (w - margin, margin + thickness), gray_bgr, -1)
+
+	# Bottom left
+	cv2.rectangle(frame, (margin, h - margin - length), (margin + thickness, h - margin), gray_bgr, -1)
+	cv2.rectangle(frame, (margin, h - margin - thickness), (margin + length, h - margin), gray_bgr, -1)
+
+	# Bottom right
+	cv2.rectangle(frame, (w - margin - thickness, h - margin - length), (w - margin, h - margin), gray_bgr, -1)
+	cv2.rectangle(frame, (w - margin - length, h - margin - thickness), (w - margin, h - margin), gray_bgr, -1)
+
+	cv2.putText(frame, "CAM 03", (margin + thickness + 20, h - margin - thickness - 20), cv2.FONT_HERSHEY_DUPLEX, 3, [0,0,0], 7)
+	cv2.putText(frame, "REC", (w//2 - 100, margin + thickness + 50), cv2.FONT_HERSHEY_DUPLEX, 4, [0,0,0], 6)
+
+	if red_dot_counter < 10:
+		cv2.circle(frame, (w//2 + 200, margin +thickness + 10), 25, red_bgr, -1)
+	elif red_dot_counter == 20:
+		red_dot_counter = 0
+	red_dot_counter += 1
+
+	cv2.rectangle(frame, (w//2  - 225, h - margin - thickness - 140), (w // 2 + 265, h - margin - 50), gray_bgr, -1)
+
+	now = datetime.now()
+	current_time = now.strftime("%H:%M:%S")
+	cv2.putText(frame, current_time, (w//2 - 225, h - margin - thickness - 25), cv2.FONT_HERSHEY_PLAIN, 7, [0,0,0], 9)
+
+	# show the output frame'
+	frame = imutils.resize(frame, width=screen_w*2, height=screen_h*2)
+
+	name = 'Security Camera'
+	cv2.namedWindow(name)
+	# cv2.moveWindow(name, screen.x, screen.y)
+	cv2.imshow(name, frame)
+	
 	# HOW TO STOP THE VIDEOSTREAM?
 	# Using cv2.waitKey(1) & 0xFF
 
 	# The waitKey(0) function returns -1 when no input is made
 	# As soon an event occurs i.e. when a button is pressed, it returns a 32-bit integer
-	# 0xFF represents 11111111, an 8 bit binary
+
 	# since we only require 8 bits to represent a character we AND waitKey(0) to 0xFF, an integer below 255 is always obtained
 	# ord(char) returns the ASCII value of the character which would be again maximum 255
 	# by comparing the integer to the ord(char) value, we can check for a key pressed event and break the loop
@@ -186,14 +276,6 @@ while True:
 	# Case 1: When no button is pressed: cv2.waitKey(1) is -1; 0xFF = 255; So -1 & 255 gives 255
 	# Case 2: When 'q' is pressed: ord("q") is 113; 0xFF = 255; So 113 & 255 gives 113
 
-	# Explaining bitwise AND Operator ('&'):
-	# The & operator yields the bitwise AND of its arguments
-	# First you convert the numbers to binary and then do a bitwise AND operation
-	# For example, (113 & 255):
-	# Binary of 113: 01110001
-	# Binary of 255: 11111111
-	# 113 & 255 = 01110001 (From the left, 1&1 gives 1, 0&1 gives 0, 0&1 gives 0,... etc.)
-	# 01110001 is the decimal for 113, which will be the output
 	# So we will basically get the ord() of the key we press if we do a bitwise AND with 255.
 	# ord() returns the unicode code point of the character. For e.g., ord('a') = 97; ord('q') = 113
 
