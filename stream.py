@@ -153,6 +153,7 @@ while True:
 
 	frame = imutils.resize(frame, width=screen_w*2, height=screen_h*2)
 	(h, w) = frame.shape[:2]
+	frame = cv2.applyColorMap(frame, cv2.COLORMAP_BONE)
 
 	# loop over the predictions
 	for i in np.arange(0, predictions.shape[2]):
@@ -258,9 +259,6 @@ while True:
 	frame = imutils.resize(frame, width=screen_w*2, height=screen_h*2)
 
 	name = 'Security Camera'
-
-	print(type(frame))
-
 	cv2.namedWindow(name)
 	# cv2.moveWindow(name, screen.x, screen.y)
 	cv2.imshow(name, frame)
